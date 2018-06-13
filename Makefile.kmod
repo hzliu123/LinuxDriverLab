@@ -1,0 +1,13 @@
+#KSRC   = "../../linux"
+KSRC   = /lib/modules/$(shell uname -r)/build
+SYSR   = $(PWD)/../build-kmod
+MDIR   = "modtest"
+
+all:
+	make -C $(KSRC) M=$(PWD) modules
+
+modules_install:
+	make -C $(KSRC) M=$(PWD) INSTALL_MOD_PATH=$(SYSR) INSTALL_MOD_DIR=$(MDIR) modules_install
+
+clean:
+	make -C $(KSRC) M=$(PWD) clean
