@@ -112,10 +112,6 @@ static int my_open(struct inode *inod, struct file *filp)
 
 static int my_close(struct inode *inod, struct file *filp)
 {
-	#if 0
-	printk(KERN_ALERT "Device closed\n");
-	return 0;
-	#endif
         int major;
         major = MAJOR(filp->f_inode->i_rdev);
         printk("*****Some body is closing me at major %d*****\n", major);
