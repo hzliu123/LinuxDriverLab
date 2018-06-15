@@ -142,17 +142,18 @@ static ssize_t my_write(struct file *filp, const char *buff, size_t len, loff_t 
 {
 	int major;
 	int ret, count;
+	major = MAJOR(filp->f_inode->i_rdev);
 	memset(message, 0, 100);
 	count = strlen(buff);
 	ret =copy_from_user(message, buff, count);
 	if (len == 0 && ret != 0 ) {
 	    printk(KERN_WARNING "error on copy_from_useri()\n");
 	    count = -EFAULT;
+	} else {
+	    printk("*****Some body is writing me at major %d*****\n", major);
+	    printk("*****Number of bytes written :: %d **********\n", count);
+	    //GPIO_SET = 1 << GPIO_LED;
+	    gpio_set_value(leds[0].gpio, 1);
 	}
-	major = MAJOR(filp->f_inode->i_rdev);
-	printk("*****Some body is writing me at major %d*****\n", major);
-	printk("*****Number of bytes written :: %d **********\n", count);
-	//GPIO_SET = 1 << GPIO_LED;
-	gpio_set_value(leds[0].gpio, 1);
 	return count;
 }
