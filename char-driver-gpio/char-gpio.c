@@ -106,7 +106,7 @@ static int my_open(struct inode *inod, struct file *filp)
         int minor;
         major = imajor(inod);
         minor = iminor(inod);
-        printk("\n*****Some body is opening me at major %d  minor %d*****\n", major, minor);
+        printk("*****Some body is opening me at major %d  minor %d*****\n", major, minor);
         return 0;
 }
 
