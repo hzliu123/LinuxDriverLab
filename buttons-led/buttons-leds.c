@@ -151,7 +151,7 @@ static int pi_buttons_read(struct file *filp, char __user *buff,
 	}
 	memset(to_user_string, 0, sizeof(to_user_string));
 	for (i=0; i<ARRAY_SIZE(ev_press); i++) {
-            if (ev_press[i] == 1) {strcat(to_user_string, " ON"); press = 1;}
+            if (ev_press[i] == 1) {strcat(to_user_string, " ON"); }
             if (ev_press[i] == 0) strcat(to_user_string, " OFF"); 
 	}
         strcat(to_user_string, " \n");
