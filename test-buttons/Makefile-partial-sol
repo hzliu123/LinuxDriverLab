@@ -11,7 +11,7 @@ C_FLAGS=
 all: $(TARGET1) $(TARGET2)
 $(TARGET1) : $(OBJECT1)
 	$(CXX) $(LD_FLAGS) $< -o $@
-# add rule for  TARGET2
+# add rule for	TARGET2
 
 
 %.o : %.c
