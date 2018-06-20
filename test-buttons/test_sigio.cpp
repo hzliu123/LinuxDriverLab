@@ -20,6 +20,7 @@ int num_of_keys = 8;
 void keypad_handler(int signum) 
 {
         int i, read_length;
+	memset(buttons, 0, sizeof(buttons));
 	read_length = read(key_fd, buttons, num_of_keys) ;
         if (read_length < 0) {
 		perror(NULL);
