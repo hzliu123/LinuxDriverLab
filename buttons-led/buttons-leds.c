@@ -160,7 +160,6 @@ static int pi_buttons_read(struct file *filp, char __user *buff,
 	err = copy_to_user((void *)buff, (const void *)(to_user_string),
 			min(strlen(to_user_string), count));
 	//printk("read: %s %d %d %lu\n", to_user_string, strlen(to_user_string), count, err);
-	for (i=0; i<ARRAY_SIZE(ev_press); i++) ev_press[i] = 0;
 	press = 0;
 	return err ? -EFAULT : min(strlen(to_user_string), count);
 }
