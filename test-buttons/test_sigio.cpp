@@ -22,10 +22,10 @@ void keypad_handler(int signum)
         int i, read_length;
 	read_length = read(key_fd, buttons, num_of_keys) ;
         if (read_length < 0) {
-                        cout << "e! ";
-                        return ;
+		perror(NULL);
+		return;
         }
-	cout << buttons << endl;
+	cout << buttons;
 	return;
 }
 
