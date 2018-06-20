@@ -56,16 +56,15 @@ int main(int argc, char **argv)
         //activate FASYNC on fd
         retval = fcntl(key_fd, F_GETFL);
         fcntl(key_fd, F_SETFL, retval | FASYNC);
-/*
-	// In embedded systems, the compatibility of sigaction is not good.
+
 	// Set up the structure to specify the new action. 
 	struct sigaction new_action;
 	new_action.sa_handler = keypad_handler;
 	sigemptyset (&new_action.sa_mask);
-	new_action.sa_flags = 0;
+	// we need SA_RESTART to prevent cin being interrupted
+	new_action.sa_flags = SA_RESTART;
 	sigaction (SIGIO, &new_action, NULL);
-*/
-	signal (SIGIO, keypad_handler);
+	//signal (SIGIO, keypad_handler);
 
 	while(1) 
 	{
