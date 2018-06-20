@@ -55,7 +55,7 @@ int main(int argc, char **argv)
         fcntl(key_fd, F_SETOWN, getpid());
         //activate FASYNC on fd
         retval = fcntl(key_fd, F_GETFL);
-        fcntl(key_fd, F_SETFL, retval | FASYNC);
+        fcntl(key_fd, F_SETFL, retval | O_ASYNC | O_NONBLOCK);
 
 	// Set up the structure to specify the new action. 
 	struct sigaction new_action;
