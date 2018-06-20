@@ -78,13 +78,13 @@ static void pi_buttons_timer(unsigned long _data)
 	}
 	printk("timer KEY %d: %d \n", bdata->button.gpio, tmp);
 	wake_up_interruptible(&button_waitq);
+	kill_fasync(&pi_buttons_async_queue, SIGIO, POLL_IN);
 }
 
 static irqreturn_t button_interrupt(int irq, void *dev_id)
 {
 	struct button_desc *bdata = (struct button_desc *)dev_id;
 	mod_timer(&bdata->timer, jiffies + msecs_to_jiffies(40));
-	kill_fasync(&pi_buttons_async_queue, SIGIO, POLL_IN);
 	return IRQ_HANDLED;
 }
 
