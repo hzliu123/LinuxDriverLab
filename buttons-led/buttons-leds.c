@@ -53,7 +53,7 @@ static struct button_desc buttons[NUM_BUTTONS] = {
 //	{ 1, {17, GPIOF_IN, "KEY1"} },
 };
 static volatile int ev_press[NUM_BUTTONS] = {0};
-static volatile int press = 0;
+static volatile int press = 0; /* global event indicator */
 static char to_user_string[100] = {0};  
 
 static struct fasync_struct *pi_buttons_async_queue;
@@ -64,20 +64,20 @@ static void pi_buttons_timer(unsigned long _data)
 	struct button_desc *bdata = (struct button_desc *)_data;
 	unsigned tmp;
 
+	press = 1;
 	tmp = gpio_get_value(bdata->button.gpio);
         bdata->value = tmp;
 	if (tmp == 0) {
 		ev_press[bdata->index] = 1;
-	        press = 1;
         	// turn corresponding LEDs on
                	gpio_set_value(leds[bdata->index].gpio, 1);
-		wake_up_interruptible(&button_waitq);
 	} else {
 		ev_press[bdata->index] = 0;
         	// turn corresponding LEDs off
                	gpio_set_value(leds[bdata->index].gpio, 0);
 	}
 	printk("timer KEY %d: %d \n", bdata->button.gpio, tmp);
+	wake_up_interruptible(&button_waitq);
 }
 
 static irqreturn_t button_interrupt(int irq, void *dev_id)
