@@ -7,6 +7,7 @@
 #include <iostream>
 #include <sys/types.h>
 #include <unistd.h>
+#include <poll.h>
 
 using namespace std;
 const char key_dev_name[] = "/dev/input/buttons";
@@ -17,16 +18,22 @@ char data[256] = {0};
 char buttons[9] = {0};
 int num_of_keys = 8;
 
-void keypad_handler(int signum) 
+void keypad_handler(int signum, siginfo_t *info, void *uctxt)
 {
-        int i, read_length;
+        int i, read_length, fd;
+	long band;
 
+	fd = info->si_fd;
+	band = info->si_band;
+	/* Just to make sure this is a read event from keypad */
+	if (fd != key_fd || !(band & POLLIN))
+		return;
 	/* All data should be read!
 	 * New data from the device is only notified once.
 	 */
 	do {
 		memset(buttons, 0, sizeof(buttons));
-		read_length = read(key_fd, buttons, num_of_keys);
+		read_length = read(fd, buttons, num_of_keys);
 		if (read_length <= 0) {
 			//if (read_length < 0)
 			//	perror(NULL);
@@ -59,7 +66,8 @@ int main(int argc, char **argv)
         if (read_length < 0) cout << "e! " << endl;
 */
 
-
+	//Set the signal number to use; this is required for valid siginfo->si_fd
+	fcntl(key_fd, F_SETSIG, SIGIO);
 	//register our own process to process SIGIO
         fcntl(key_fd, F_SETOWN, getpid());
         //activate FASYNC on fd
@@ -68,12 +76,12 @@ int main(int argc, char **argv)
 
 	// Set up the structure to specify the new action. 
 	struct sigaction new_action;
-	new_action.sa_handler = keypad_handler;
+	new_action.sa_sigaction = keypad_handler;
 	sigemptyset (&new_action.sa_mask);
 	// we need SA_RESTART to prevent cin being interrupted
-	new_action.sa_flags = SA_RESTART;
+	// SA_SIGINFO to allow signal handler to receive file descriptor information
+	new_action.sa_flags = SA_RESTART | SA_SIGINFO;
 	sigaction (SIGIO, &new_action, NULL);
-	//signal (SIGIO, keypad_handler);
 
 	while(1) 
 	{
