@@ -12,34 +12,43 @@
 using namespace std;
 const char key_dev_name[] = "/dev/input/buttons";
 const char key_dev_name2[]= "/dev/buttons";
-int key_fd;
+static const char *tty_dev_name = "/dev/tty";
+int key_fd, tty_fd;
+int quit = 0;
 
-char data[256] = {0};
-char buttons[9] = {0};
-int num_of_keys = 8;
 
 void keypad_handler(int signum, siginfo_t *info, void *uctxt)
 {
         int i, read_length, fd;
 	long band;
+	char data[80];
 
 	fd = info->si_fd;
 	band = info->si_band;
-	/* Just to make sure this is a read event from keypad */
-	if (fd != key_fd || !(band & POLLIN))
+	//cout << "fd:" << fd << ", band:" << band << endl;
+
+	/* Just to make sure this is a read event */
+	if (!(band & POLLIN))
 		return;
 	/* All data should be read!
 	 * New data from the device is only notified once.
 	 */
 	do {
-		memset(buttons, 0, sizeof(buttons));
-		read_length = read(fd, buttons, num_of_keys);
+		memset(data, 0, sizeof(data));
+		read_length = read(fd, data, sizeof(data));
 		if (read_length <= 0) {
 			//if (read_length < 0)
 			//	perror(NULL);
 			break;
 	        }
-		cout << buttons;
+		if (fd == tty_fd) {
+			cout << "console input received: " << data << endl;
+			if (strcmp(data, "q\n")==0) {
+				quit = 1;
+				break;
+			}
+		} else
+			cout << data;
 	} while (read_length > 0);
 
 	return;
@@ -49,7 +58,8 @@ void keypad_handler(int signum, siginfo_t *info, void *uctxt)
 
 int main(int argc, char **argv) 
 {
-	int  retval;
+        int retval;
+
 	key_fd = open(key_dev_name , O_RDONLY | O_NONBLOCK);
 	if(key_fd < 0)
 	{	
@@ -60,19 +70,25 @@ int main(int argc, char **argv)
 			return -1;
 		}
 	}
-/*
-	int read_length = read(key_fd, buttons, num_of_keys) ;
-	cout << buttons << endl ;
-        if (read_length < 0) cout << "e! " << endl;
-*/
+
+	tty_fd = open(tty_dev_name, O_RDWR | O_NOCTTY | O_NONBLOCK);
+	if(tty_fd < 0)
+	{
+		cout << tty_dev_name << " file open failed:" << endl;
+		return -1;
+	}
 
 	//Set the signal number to use; this is required for valid siginfo->si_fd
 	fcntl(key_fd, F_SETSIG, SIGIO);
+	fcntl(tty_fd, F_SETSIG, SIGIO);
 	//register our own process to process SIGIO
         fcntl(key_fd, F_SETOWN, getpid());
-        //activate FASYNC on fd
+        fcntl(tty_fd, F_SETOWN, getpid());
+        //activate O_ASYNC on fd
         retval = fcntl(key_fd, F_GETFL);
-        fcntl(key_fd, F_SETFL, retval | O_ASYNC | O_NONBLOCK);
+        fcntl(key_fd, F_SETFL, retval | O_ASYNC);
+        retval = fcntl(tty_fd, F_GETFL);
+        fcntl(tty_fd, F_SETFL, retval | O_ASYNC);
 
 	// Set up the structure to specify the new action. 
 	struct sigaction new_action;
@@ -83,16 +99,14 @@ int main(int argc, char **argv)
 	new_action.sa_flags = SA_RESTART | SA_SIGINFO;
 	sigaction (SIGIO, &new_action, NULL);
 
+	cout << "Press q and return to quit: " << endl;
 	while(1) 
 	{
-		cout << "Press q and return to quit: " << endl ;
-		cin >> data;
-	        cout << "console input " << "received: " << data << endl;
-		if (strcmp(data, "q")==0) break;
-		//cout << "info: sleep 10 seconds ..." << endl << endl;
-		//sleep(10);
+		if (quit) break;
+		sleep(1);
 	}
-	close (key_fd);
+	close(key_fd);
+	close(tty_fd);
 	return 0;
 }
 
