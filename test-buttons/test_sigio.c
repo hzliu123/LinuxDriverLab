@@ -1,31 +1,27 @@
+#define _GNU_SOURCE  /* F_SETSIG */
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
 #include <signal.h>
-#include <sys/ioctl.h>
-#include <linux/input.h>
-#include <iostream>
-#include <sys/types.h>
 #include <unistd.h>
 #include <poll.h>
 
-using namespace std;
 const char key_dev_name[] = "/dev/input/buttons";
 const char key_dev_name2[]= "/dev/buttons";
-static const char *tty_dev_name = "/dev/tty";
+const char *tty_dev_name = "/dev/tty";
 int key_fd, tty_fd;
 int quit = 0;
 
 
 void keypad_handler(int signum, siginfo_t *info, void *uctxt)
 {
-        int i, read_length, fd;
+        int read_length, fd;
 	long band;
 	char data[80];
 
 	fd = info->si_fd;
 	band = info->si_band;
-	//cout << "fd:" << fd << ", band:" << band << endl;
+	//printf("fd: %d, band: %d\n", fd, band);
 
 	/* Just to make sure this is a read event */
 	if (!(band & POLLIN))
@@ -42,13 +38,13 @@ void keypad_handler(int signum, siginfo_t *info, void *uctxt)
 			break;
 	        }
 		if (fd == tty_fd) {
-			cout << "console input received: " << data << endl;
+			printf("console input received: %s\n", data);
 			if (strcmp(data, "q\n")==0) {
 				quit = 1;
 				break;
 			}
 		} else
-			cout << data;
+			printf(data);
 	} while (read_length > 0);
 
 	return;
@@ -66,7 +62,7 @@ int main(int argc, char **argv)
 		key_fd = open(key_dev_name2 , O_RDONLY | O_NONBLOCK);
 		if(key_fd < 0) 
 		{
-			cout << key_dev_name<< " and " << key_dev_name2 << " file open failed" << endl;
+			printf("%s and %s file open failed\n", key_dev_name, key_dev_name2);
 			return -1;
 		}
 	}
@@ -74,7 +70,7 @@ int main(int argc, char **argv)
 	tty_fd = open(tty_dev_name, O_RDWR | O_NOCTTY | O_NONBLOCK);
 	if(tty_fd < 0)
 	{
-		cout << tty_dev_name << " file open failed:" << endl;
+		printf("%s file open failed\n", tty_dev_name);
 		return -1;
 	}
 
@@ -99,7 +95,7 @@ int main(int argc, char **argv)
 	new_action.sa_flags = SA_RESTART | SA_SIGINFO;
 	sigaction (SIGIO, &new_action, NULL);
 
-	cout << "Press q and return to quit: " << endl;
+	printf("Press q and return to quit:\n");
 	while(1) 
 	{
 		if (quit) break;
