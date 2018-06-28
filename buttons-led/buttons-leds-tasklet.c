@@ -142,7 +142,8 @@ static int pi_buttons_open(struct inode *inode, struct file *file)
 		setup_timer(&buttons[i].timer, pi_buttons_timer,
 				(unsigned long)&buttons[i]);
 		irq = gpio_to_irq(buttons[i].button.gpio);
-		err = request_irq(irq, button_interrupt, IRQ_TYPE_EDGE_BOTH, 
+		err = request_irq(irq, button_interrupt,
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
 				buttons[i].button.label, (void *)&buttons[i]);
 		if (err)
 			break;
@@ -194,7 +195,7 @@ static int pi_buttons_read(struct file *filp, char __user *buff,
 	}
 	memset(to_user_string, 0, sizeof(to_user_string));
 	for (i=0; i<ARRAY_SIZE(ev_press); i++) {
-            if (ev_press[i] == 1) {strcat(to_user_string, " ON"); press = 1;}
+            if (ev_press[i] == 1) {strcat(to_user_string, " ON"); }
             if (ev_press[i] == 0) strcat(to_user_string, " OFF"); 
 	}
         strcat(to_user_string, " \n");
