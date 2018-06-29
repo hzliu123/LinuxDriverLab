@@ -244,8 +244,6 @@ static struct miscdevice misc = {
 static int __init button_dev_init(void)
 {
 	int ret;
-	// start the tasklet on module load
-        tasklet_schedule(&tl_descr);
         // register LED gpios
         ret = gpio_request_array(leds, ARRAY_SIZE(leds));
         if (ret) {
