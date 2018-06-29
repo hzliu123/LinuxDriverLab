@@ -156,7 +156,6 @@ static int pi_buttons_open(struct inode *inode, struct file *file)
 			irq = gpio_to_irq(buttons[i].button.gpio);
 			disable_irq(irq);
 			free_irq(irq, (void *)&buttons[i]);
-			del_timer_sync(&buttons[i].timer);
 		}
 		return -EBUSY;
 	}
