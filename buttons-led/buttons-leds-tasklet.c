@@ -24,10 +24,7 @@
 #define NUM_BUTTONS 1
 
 int g_time_interval = 500;
-struct timer_list g_timer;
-int g_times = 0;
 const int g_times_limit = 10;
-int g_led_index = 0;
  
 /* Define GPIOs for LEDs */
 static struct gpio leds[NUM_BUTTONS] = {
@@ -50,70 +47,56 @@ static struct gpio leds[NUM_BUTTONS] = {
 
 struct button_desc {
 	int index;
+	int g_times;
 	struct gpio button;
+	struct tasklet_struct tl_descr;
 	struct timer_list timer;
 	int value;    //1: OFF, 0: ON
 };
 static struct button_desc buttons[NUM_BUTTONS] = {
-	{ 0, {4, GPIOF_IN, "KEY0"} },
-//	{ 1, {17, GPIOF_IN, "KEY1"} },
+	{ 0, 0, {4, GPIOF_IN, "KEY0"} },
+//	{ 1, 0, {17, GPIOF_IN, "KEY1"} },
 };
 void _TimerHandler(unsigned long data)
 {
+	struct button_desc *bdata = (struct button_desc *)data;
 	int i;
 	/*Restarting the timer...*/
-	if (g_times < g_times_limit) {
+	if (bdata->g_times < g_times_limit) {
 	       	// turn corresponding LEDs on/off
-		i = g_times % 2;
-	        gpio_set_value(leds[g_led_index].gpio, i);
-		g_times++;
-		mod_timer( &g_timer, jiffies + msecs_to_jiffies(g_time_interval));
-	} else if (g_times == g_times_limit) {
-		g_times = 0;
-		gpio_set_value(leds[g_led_index].gpio, 0);
-		del_timer(&g_timer);
+		i = bdata->g_times % 2;
+	        gpio_set_value(leds[bdata->index].gpio, i);
+		bdata->g_times++;
+		mod_timer( &bdata->timer, jiffies + msecs_to_jiffies(g_time_interval));
+	} else if (bdata->g_times == g_times_limit) {
+		bdata->g_times = 0;
+		gpio_set_value(leds[bdata->index].gpio, 0);
+		del_timer(&bdata->timer);
 	}
-	printk(KERN_INFO "Timer Handler called.n");
+	printk(KERN_INFO "Timer Handler called.\n");
 }
-
-static void tasklet_func(unsigned long data)
-{
-        printk(KERN_INFO "%s\n", __func__);
-
-        printk("Tasklet started\n");
-	/*Starting the timer.*/
-	setup_timer(&g_timer, _TimerHandler, 0);
-	mod_timer( &g_timer, jiffies + msecs_to_jiffies(g_time_interval));
-	
-        printk("Tasklet ended\n");
-}
-
-DECLARE_TASKLET(tl_descr, tasklet_func, 0L);
-
-
 
 static volatile int ev_press[NUM_BUTTONS] = {0};
 static volatile int press = 0;
-static char to_user_string[100] = {0};  
+static char to_user_string[100] = {0};
 
 static struct fasync_struct *pi_buttons_async_queue;
 static DECLARE_WAIT_QUEUE_HEAD(button_waitq);
 
-static void pi_buttons_timer(unsigned long _data)
+static void tasklet_func(unsigned long data)
 {
-	struct button_desc *bdata = (struct button_desc *)_data;
+
+	struct button_desc *bdata = (struct button_desc *)data;
 	unsigned tmp;
 
 	tmp = gpio_get_value(bdata->button.gpio);
         bdata->value = tmp;
-	g_led_index = bdata->index;
 	if (tmp == 0) {
 		ev_press[bdata->index] = 1;
 	        press = 1;
         	// turn corresponding LEDs on
                	gpio_set_value(leds[bdata->index].gpio, 1);
-		// start a tasklet
-                tasklet_schedule(&tl_descr);
+		mod_timer(&bdata->timer, jiffies + msecs_to_jiffies(g_time_interval));
 		wake_up_interruptible(&button_waitq);
 	} else {
 		ev_press[bdata->index] = 0;
@@ -126,7 +109,7 @@ static void pi_buttons_timer(unsigned long _data)
 static irqreturn_t button_interrupt(int irq, void *dev_id)
 {
 	struct button_desc *bdata = (struct button_desc *)dev_id;
-	mod_timer(&bdata->timer, jiffies + msecs_to_jiffies(40));
+        tasklet_schedule(&bdata->tl_descr);
 	kill_fasync(&pi_buttons_async_queue, SIGIO, POLL_IN);
 	return IRQ_HANDLED;
 }
@@ -139,8 +122,9 @@ static int pi_buttons_open(struct inode *inode, struct file *file)
 	for (i = 0; i < ARRAY_SIZE(buttons); i++) {
 		if (!buttons[i].button.gpio)
 			continue;
-		setup_timer(&buttons[i].timer, pi_buttons_timer,
-				(unsigned long)&buttons[i]);
+
+	        setup_timer(&buttons[i].timer, _TimerHandler, (unsigned long)&buttons[i]);
+		tasklet_init(&buttons[i].tl_descr, tasklet_func, (unsigned long)&buttons[i]);
 		irq = gpio_to_irq(buttons[i].button.gpio);
 		err = request_irq(irq, button_interrupt,
 				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING,
@@ -173,8 +157,9 @@ static int pi_buttons_close(struct inode *inode, struct file *file)
 			continue;
 
 		irq = gpio_to_irq(buttons[i].button.gpio);
+		/* note the sequence */
 		free_irq(irq, (void *)&buttons[i]);
-
+		tasklet_kill(&buttons[i].tl_descr);
 		del_timer_sync(&buttons[i].timer);
 	}
 
@@ -265,7 +250,6 @@ static void __exit button_dev_exit(void)
         // unregister LED gpios
         gpio_free_array(leds, ARRAY_SIZE(leds));
 
-        tasklet_kill(&tl_descr);
 	misc_deregister(&misc);
 }
 
