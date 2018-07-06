@@ -16,9 +16,7 @@ int read_data(int fd)
         int read_length;
 
 	//printf("fd: %d\n", fd);
-	/* All data should be read!
-	 * New data from the device is only notified once.
-	 */
+	/* Read all data until read() returns 0 */
 	do {
 		memset(data, 0, sizeof(data));
 		read_length = read(fd, data, sizeof(data));
